@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/IronPrint.Api/IronPrint.Api.csproj" />
+    <Project Path="src/IronPrint.Application/IronPrint.Application.csproj" />
+    <Project Path="src/IronPrint.Domain/IronPrint.Domain.csproj" />
+    <Project Path="src/IronPrint.Infrastructure/IronPrint.Infrastructure.csproj" />
+  </Folder>
+</Solution>
