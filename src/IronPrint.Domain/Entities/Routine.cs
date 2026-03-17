@@ -32,4 +32,20 @@ public class Routine
     }
 
     public void AddDay(RoutineDay day) => _days.Add(day);
+
+    public static Routine Reconstitute(Guid id, string userId, string name, int weeksDuration, DateTime createdAt, IEnumerable<RoutineDay>? days = null)
+    {
+        var routine = new Routine
+        {
+            Id = id,
+            UserId = userId,
+            Name = name,
+            WeeksDuration = weeksDuration,
+            CreatedAt = createdAt
+        };
+        if (days is not null)
+            foreach (var day in days)
+                routine._days.Add(day);
+        return routine;
+    }
 }

@@ -30,4 +30,17 @@ public class RoutineExercise
         TargetSets = targetSets;
         TargetReps = targetReps;
     }
+
+    public static RoutineExercise Reconstitute(Guid id, Guid routineDayId, Guid exerciseId, int order, int targetSets, int targetReps)
+    {
+        return new RoutineExercise
+        {
+            Id = id,
+            RoutineDayId = routineDayId,
+            ExerciseId = exerciseId,
+            Order = order,
+            TargetSets = targetSets,
+            TargetReps = targetReps
+        };
+    }
 }

@@ -24,4 +24,19 @@ public class ExerciseLog
     }
 
     public void AddSet(SetLog set) => _sets.Add(set);
+
+    public static ExerciseLog Reconstitute(Guid id, Guid workoutSessionId, Guid exerciseId, int order, IEnumerable<SetLog>? sets = null)
+    {
+        var log = new ExerciseLog
+        {
+            Id = id,
+            WorkoutSessionId = workoutSessionId,
+            ExerciseId = exerciseId,
+            Order = order
+        };
+        if (sets is not null)
+            foreach (var set in sets)
+                log._sets.Add(set);
+        return log;
+    }
 }

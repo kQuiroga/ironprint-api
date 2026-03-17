@@ -32,4 +32,17 @@ public class Exercise
         MuscleGroup = muscleGroup;
         Notes = notes;
     }
+
+    public static Exercise Reconstitute(Guid id, string userId, string name, MuscleGroup muscleGroup, string? notes, DateTime createdAt)
+    {
+        return new Exercise
+        {
+            Id = id,
+            UserId = userId,
+            Name = name,
+            MuscleGroup = muscleGroup,
+            Notes = notes,
+            CreatedAt = createdAt
+        };
+    }
 }

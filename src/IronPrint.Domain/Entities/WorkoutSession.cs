@@ -24,4 +24,19 @@ public class WorkoutSession
     }
 
     public void AddExerciseLog(ExerciseLog log) => _exerciseLogs.Add(log);
+
+    public static WorkoutSession Reconstitute(Guid id, string userId, DateOnly date, Guid? routineDayId, IEnumerable<ExerciseLog>? logs = null)
+    {
+        var session = new WorkoutSession
+        {
+            Id = id,
+            UserId = userId,
+            Date = date,
+            RoutineDayId = routineDayId
+        };
+        if (logs is not null)
+            foreach (var log in logs)
+                session._exerciseLogs.Add(log);
+        return session;
+    }
 }

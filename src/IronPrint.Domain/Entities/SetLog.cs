@@ -32,4 +32,17 @@ public class SetLog
         Reps = reps;
         Completed = true;
     }
+
+    public static SetLog Reconstitute(Guid id, Guid exerciseLogId, int setNumber, Weight weight, int reps, bool completed)
+    {
+        return new SetLog
+        {
+            Id = id,
+            ExerciseLogId = exerciseLogId,
+            SetNumber = setNumber,
+            Weight = weight,
+            Reps = reps,
+            Completed = completed
+        };
+    }
 }

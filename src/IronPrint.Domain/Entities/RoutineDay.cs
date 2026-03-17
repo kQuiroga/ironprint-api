@@ -22,4 +22,18 @@ public class RoutineDay
     }
 
     public void AddExercise(RoutineExercise exercise) => _exercises.Add(exercise);
+
+    public static RoutineDay Reconstitute(Guid id, Guid routineId, DayOfWeek dayOfWeek, IEnumerable<RoutineExercise>? exercises = null)
+    {
+        var day = new RoutineDay
+        {
+            Id = id,
+            RoutineId = routineId,
+            DayOfWeek = dayOfWeek
+        };
+        if (exercises is not null)
+            foreach (var ex in exercises)
+                day._exercises.Add(ex);
+        return day;
+    }
 }
