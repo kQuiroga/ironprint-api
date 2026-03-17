@@ -51,6 +51,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 // Endpoints
+app.MapAuthEndpoints();
 app.MapExerciseEndpoints();
 app.MapRoutineEndpoints();
 app.MapWorkoutSessionEndpoints();
