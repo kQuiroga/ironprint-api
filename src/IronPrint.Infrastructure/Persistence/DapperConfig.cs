@@ -1,3 +1,4 @@
+using System.Data;
 using Dapper;
 using Microsoft.AspNetCore.Identity;
 
@@ -9,6 +10,8 @@ public static class DapperConfig
     {
         DefaultTypeMap.MatchNamesWithUnderscores = true;
 
+        SqlMapper.AddTypeHandler(new DateOnlyTypeHandler());
+
         // Mapeo explícito para IdentityUser (snake_case → PascalCase)
         SqlMapper.SetTypeMap(typeof(IdentityUser), new CustomPropertyTypeMap(
             typeof(IdentityUser),
@@ -19,4 +22,13 @@ public static class DapperConfig
                     .FirstOrDefault(p => p.Name.Equals(normalized, StringComparison.OrdinalIgnoreCase))!;
             }));
     }
+}
+
+public sealed class DateOnlyTypeHandler : SqlMapper.TypeHandler<DateOnly>
+{
+    public override void SetValue(IDbDataParameter parameter, DateOnly value)
+        => parameter.Value = value.ToDateTime(TimeOnly.MinValue);
+
+    public override DateOnly Parse(object value)
+        => DateOnly.FromDateTime((DateTime)value);
 }

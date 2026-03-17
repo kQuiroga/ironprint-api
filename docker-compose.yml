@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:17-alpine
-    container_name: ironprint-db
+    container_name: ip-db
     environment:
       POSTGRES_DB: ironprint
       POSTGRES_USER: ironprint
@@ -10,6 +10,28 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ironprint -d ironprint"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ip-api
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Database: "Host=postgres;Port=5432;Database=ironprint;Username=ironprint;Password=ironprint_dev"
+      Jwt__SecretKey: "${JWT_SECRET_KEY}"
+      Jwt__Issuer: "ironprint-api"
+      Jwt__Audience: "ironprint-web"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:
