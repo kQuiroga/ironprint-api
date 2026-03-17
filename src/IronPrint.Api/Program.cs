@@ -1,3 +1,4 @@
+using IronPrint.Application;
 using IronPrint.Infrastructure;
 using IronPrint.Infrastructure.Migrations;
 
@@ -7,6 +8,7 @@ var connectionString = builder.Configuration.GetConnectionString("Database")
     ?? throw new InvalidOperationException("Connection string 'Database' no encontrada.");
 
 builder.Services.AddOpenApi();
+builder.Services.AddApplication();
 builder.Services.AddInfrastructure(connectionString);
 
 var app = builder.Build();
