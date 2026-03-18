@@ -8,8 +8,12 @@ using IronPrint.Infrastructure.Migrations;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((ctx, _, config) =>
+    config.ReadFrom.Configuration(ctx.Configuration));
 
 // Lectura de configuración obligatoria al arrancar
 var connectionString = builder.Configuration.GetConnectionString("Database")
@@ -90,6 +94,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseSerilogRequestLogging();
 app.UseCors();
 app.UseRateLimiter();
 app.UseAuthentication();
