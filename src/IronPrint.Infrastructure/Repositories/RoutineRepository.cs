@@ -15,28 +15,22 @@ public sealed class RoutineRepository : IRoutineRepository
     {
         using var conn = await _db.CreateAsync(ct);
 
-        var routineRow = await conn.QuerySingleOrDefaultAsync<RoutineRow>(
-            "SELECT id, user_id, name, weeks_duration, created_at FROM routines WHERE id = @id AND user_id = @userId",
+        var rows = await conn.QueryAsync<FlatRoutineRow>(
+            RoutineJoinSql + " WHERE r.id = @id AND r.user_id = @userId",
             new { id, userId });
 
-        if (routineRow is null) return null;
-
-        return await LoadWithDaysAsync(conn, routineRow);
+        return BuildRoutines(rows).FirstOrDefault();
     }
 
     public async Task<IEnumerable<Routine>> GetByUserIdAsync(string userId, CancellationToken ct = default)
     {
         using var conn = await _db.CreateAsync(ct);
 
-        var rows = await conn.QueryAsync<RoutineRow>(
-            "SELECT id, user_id, name, weeks_duration, created_at FROM routines WHERE user_id = @userId ORDER BY created_at DESC",
+        var rows = await conn.QueryAsync<FlatRoutineRow>(
+            RoutineJoinSql + " WHERE r.user_id = @userId ORDER BY r.created_at DESC, rd.day_of_week, re.\"order\"",
             new { userId });
 
-        var routines = new List<Routine>();
-        foreach (var row in rows)
-            routines.Add(await LoadWithDaysAsync(conn, row));
-
-        return routines;
+        return BuildRoutines(rows);
     }
 
     public async Task AddAsync(Routine routine, CancellationToken ct = default)
@@ -86,32 +80,75 @@ public sealed class RoutineRepository : IRoutineRepository
         await conn.ExecuteAsync("DELETE FROM routines WHERE id = @id", new { id });
     }
 
-    private static async Task<Routine> LoadWithDaysAsync(Npgsql.NpgsqlConnection conn, RoutineRow row)
+    private const string RoutineJoinSql =
+        """
+        SELECT
+            r.id              AS RoutineId,
+            r.user_id         AS UserId,
+            r.name            AS Name,
+            r.weeks_duration  AS WeeksDuration,
+            r.created_at      AS CreatedAt,
+            rd.id             AS DayId,
+            rd.routine_id     AS DayRoutineId,
+            rd.day_of_week    AS DayOfWeek,
+            re.id             AS ExId,
+            re.routine_day_id AS ExRoutineDayId,
+            re.exercise_id    AS ExerciseId,
+            re."order"        AS ExOrder,
+            re.target_sets    AS TargetSets,
+            re.target_reps    AS TargetReps
+        FROM routines r
+        LEFT JOIN routine_days rd ON rd.routine_id = r.id
+        LEFT JOIN routine_exercises re ON re.routine_day_id = rd.id
+        """;
+
+    private static IEnumerable<Routine> BuildRoutines(IEnumerable<FlatRoutineRow> rows)
     {
-        var dayRows = await conn.QueryAsync<RoutineDayRow>(
-            "SELECT id, routine_id, day_of_week FROM routine_days WHERE routine_id = @routineId ORDER BY day_of_week",
-            new { routineId = row.Id });
+        var routineOrder = new List<Guid>();
+        var routineRows = new Dictionary<Guid, FlatRoutineRow>();
+        var routineDays = new Dictionary<Guid, Dictionary<Guid, FlatRoutineRow>>();
+        var dayExercises = new Dictionary<Guid, List<FlatRoutineRow>>();
 
-        var days = new List<RoutineDay>();
-        foreach (var dayRow in dayRows)
+        foreach (var row in rows)
         {
-            var exRows = await conn.QueryAsync<RoutineExerciseRow>(
-                """
-                SELECT id, routine_day_id, exercise_id, "order", target_sets, target_reps
-                FROM routine_exercises WHERE routine_day_id = @dayId ORDER BY "order"
-                """,
-                new { dayId = dayRow.Id });
+            if (!routineRows.ContainsKey(row.RoutineId))
+            {
+                routineOrder.Add(row.RoutineId);
+                routineRows[row.RoutineId] = row;
+                routineDays[row.RoutineId] = [];
+            }
 
-            var exercises = exRows.Select(e =>
-                RoutineExercise.Reconstitute(e.Id, e.RoutineDayId, e.ExerciseId, e.Order, e.TargetSets, e.TargetReps));
+            if (row.DayId is null) continue;
 
-            days.Add(RoutineDay.Reconstitute(dayRow.Id, dayRow.RoutineId, (DayOfWeek)dayRow.DayOfWeek, exercises));
+            if (!routineDays[row.RoutineId].ContainsKey(row.DayId.Value))
+            {
+                routineDays[row.RoutineId][row.DayId.Value] = row;
+                dayExercises[row.DayId.Value] = [];
+            }
+
+            if (row.ExId is not null)
+                dayExercises[row.DayId.Value].Add(row);
         }
 
-        return Routine.Reconstitute(row.Id, row.UserId, row.Name, row.WeeksDuration, row.CreatedAt, days);
+        return routineOrder.Select(routineId =>
+        {
+            var r = routineRows[routineId];
+            var days = routineDays[routineId].Select(kv =>
+            {
+                var d = kv.Value;
+                var exercises = dayExercises.TryGetValue(kv.Key, out var exRows)
+                    ? exRows.Select(e => RoutineExercise.Reconstitute(
+                        e.ExId!.Value, e.ExRoutineDayId!.Value, e.ExerciseId!.Value,
+                        e.ExOrder!.Value, e.TargetSets!.Value, e.TargetReps!.Value))
+                    : [];
+                return RoutineDay.Reconstitute(d.DayId!.Value, d.DayRoutineId!.Value, (DayOfWeek)d.DayOfWeek!.Value, exercises);
+            });
+            return Routine.Reconstitute(r.RoutineId, r.UserId, r.Name, r.WeeksDuration, r.CreatedAt, days);
+        });
     }
 
-    private sealed record RoutineRow(Guid Id, string UserId, string Name, int WeeksDuration, DateTime CreatedAt);
-    private sealed record RoutineDayRow(Guid Id, Guid RoutineId, int DayOfWeek);
-    private sealed record RoutineExerciseRow(Guid Id, Guid RoutineDayId, Guid ExerciseId, int Order, int TargetSets, int TargetReps);
+    private sealed record FlatRoutineRow(
+        Guid RoutineId, string UserId, string Name, int WeeksDuration, DateTime CreatedAt,
+        Guid? DayId, Guid? DayRoutineId, int? DayOfWeek,
+        Guid? ExId, Guid? ExRoutineDayId, Guid? ExerciseId, int? ExOrder, int? TargetSets, int? TargetReps);
 }
