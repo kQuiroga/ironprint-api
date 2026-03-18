@@ -1,4 +1,6 @@
+using System.Net.Mime;
 using System.Text;
+using System.Text.Json;
 using System.Threading.RateLimiting;
 using IronPrint.Api.Endpoints;
 using Scalar.AspNetCore;
@@ -6,7 +8,9 @@ using IronPrint.Application;
 using IronPrint.Infrastructure;
 using IronPrint.Infrastructure.Migrations;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 
@@ -105,5 +109,24 @@ app.MapAuthEndpoints();
 app.MapExerciseEndpoints();
 app.MapRoutineEndpoints();
 app.MapWorkoutSessionEndpoints();
+
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = async (ctx, report) =>
+    {
+        ctx.Response.ContentType = MediaTypeNames.Application.Json;
+        var result = JsonSerializer.Serialize(new
+        {
+            status = report.Status.ToString(),
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString(),
+                description = e.Value.Description
+            })
+        });
+        await ctx.Response.WriteAsync(result);
+    }
+});
 
 app.Run();

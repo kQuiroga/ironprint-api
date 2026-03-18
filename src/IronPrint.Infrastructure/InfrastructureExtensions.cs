@@ -1,5 +1,6 @@
 using IronPrint.Application.Common;
 using IronPrint.Domain.Ports;
+using IronPrint.Infrastructure.Health;
 using IronPrint.Infrastructure.Identity;
 using IronPrint.Infrastructure.Persistence;
 using IronPrint.Infrastructure.Repositories;
@@ -29,6 +30,9 @@ public static class InfrastructureExtensions
         // JWT y tokens de autenticación
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();
+
+        services.AddHealthChecks()
+            .AddCheck<PostgreSqlHealthCheck>("postgresql");
 
         // Handlers de auth (viven en Infrastructure por depender de Identity)
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(InfrastructureExtensions).Assembly));
