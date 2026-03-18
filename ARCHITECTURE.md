@@ -17,36 +17,38 @@ Aplicacion web de seguimiento de entrenamientos. Permite a los usuarios:
 
 | Repositorio | Contenido |
 |---|---|
-| `ironprint-api` | Backend .NET (ASP.NET Core + Dapper + PostgreSQL) |
-| `ironprint-web` | Frontend Next.js |
+| `ironprint-api` | Backend .NET 10 (ASP.NET Core + Dapper + PostgreSQL) |
+| `ironprint-web` | Frontend Next.js 15 |
 
 Dos repositorios separados para mantener ciclos de despliegue, CI/CD y tooling independientes. Una futura app movil sera un tercer repositorio consumiendo la misma API.
 
 ### 2.2 Backend
 
-- **Runtime**: .NET 9 (estable; migrar a .NET 10 cuando salga en noviembre 2026)
-- **Framework**: ASP.NET Core Web API
+- **Runtime**: .NET 10
+- **Framework**: ASP.NET Core Minimal APIs
 - **Arquitectura**: Hexagonal (Ports & Adapters) pragmatica
 - **ORM**: Dapper (control total sobre SQL, mejor rendimiento en lecturas)
-- **Migraciones de esquema**: FluentMigrator o DbUp (a decidir)
+- **Migraciones de esquema**: DbUp (scripts SQL versionados, se ejecutan al arrancar la API)
 - **Patron CQRS ligero**: MediatR para separar Commands (escritura) y Queries (lectura)
-- **Autenticacion**: ASP.NET Identity + JWT
+- **Autenticacion**: ASP.NET Identity + JWT (access token 15 min) + Refresh tokens (30 dias, con token rotation)
+- **Logging**: Serilog — consola en dev, consola + archivo rotativo en prod
 - **Patrones principales**:
   - Repository (abstraccion de acceso a datos)
   - CQRS ligero (Commands/Queries con MediatR)
-  - Value Objects (Weight, Sets, Reps)
+  - Value Objects (Weight)
   - Result Pattern (evitar excepciones para flujo de control)
-  - Specification (filtros reutilizables, e.g. entrenamientos por rango de fechas)
 
 #### Estructura de proyectos backend
 
 ```
 ironprint-api/
   src/
-    IronPrint.Api/              -> Puerto de entrada (Controllers/Minimal APIs)
-    IronPrint.Application/      -> Casos de uso (Commands, Queries, Handlers)
+    IronPrint.Api/              -> Puerto de entrada (Minimal APIs, endpoints)
+    IronPrint.Application/      -> Casos de uso (Commands, Queries, Handlers, Behaviors)
     IronPrint.Domain/           -> Entidades, Value Objects, interfaces de puertos
-    IronPrint.Infrastructure/   -> Adaptadores de salida (Dapper, JWT, migraciones)
+    IronPrint.Infrastructure/   -> Adaptadores de salida (Dapper, JWT, Identity, migraciones)
+  tests/
+    IronPrint.Tests/            -> Tests unitarios (xUnit + FluentAssertions)
 ```
 
 ### 2.3 Frontend
@@ -83,22 +85,23 @@ ironprint-web/
 
 ### 2.4 Base de datos
 
-- **Motor**: PostgreSQL
+- **Motor**: PostgreSQL 17
 - **Servicio**: Azure Database for PostgreSQL (Flexible Server) en produccion
 - **Desarrollo local**: PostgreSQL en contenedor Docker (via Docker Compose)
 
 ### 2.5 Despliegue
 
 - **Backend**: Azure Container Apps (Docker, escala a cero)
-- **Frontend**: Azure Container Apps o Vercel (a decidir)
+- **Frontend**: Vercel (a confirmar) o Azure Container Apps
 - **Base de datos**: Azure Database for PostgreSQL Flexible Server
 - **CI/CD**: GitHub Actions (un pipeline por repositorio)
 
 ### 2.6 Autenticacion
 
 - ASP.NET Identity para gestion de usuarios
-- JWT (JSON Web Tokens) para autenticacion stateless
-- El frontend almacena el token y lo envia en cada peticion a la API
+- JWT access token (15 min) para autenticacion stateless
+- Refresh token (30 dias) almacenado en DB con hash SHA-256 — con token rotation
+- Endpoints: `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/revoke`
 
 ## 3. Modelo de dominio
 
@@ -126,13 +129,7 @@ WorkoutSession (date, routine_day_ref)
 - **ExerciseLog**: Registro de un ejercicio realizado dentro de una sesion.
 - **SetLog**: Registro de una serie individual (numero de serie, peso, repeticiones, completada o no).
 
-## 4. Decisiones pendientes
-
-- [ ] Herramienta de migraciones: FluentMigrator vs DbUp
-- [ ] Despliegue del frontend: Vercel vs Azure Container Apps
-- [ ] Estrategia de refresh tokens para JWT
-
-## 5. Consideraciones futuras
+## 4. Consideraciones futuras
 
 - App movil (tercer repositorio consumiendo la misma API REST)
 - Posible uso de gRPC para la app movil si se necesita mejor rendimiento
