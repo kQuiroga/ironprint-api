@@ -26,8 +26,8 @@ public sealed class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRe
             sw.Stop();
 
             if (response is Result result && result.IsFailure)
-                _logger.LogWarning("{Request} falló en {Elapsed}ms: [{Code}] {Message}",
-                    name, sw.ElapsedMilliseconds, result.Error.Code, result.Error.Message);
+                _logger.LogWarning("{Request} falló en {Elapsed}ms: [{Code}] {Description}",
+                    name, sw.ElapsedMilliseconds, result.Error.Code, result.Error.Description);
             else
                 _logger.LogInformation("{Request} completado en {Elapsed}ms", name, sw.ElapsedMilliseconds);
 
