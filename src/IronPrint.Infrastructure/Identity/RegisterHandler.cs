@@ -1,26 +1,35 @@
 using IronPrint.Application.Commands.Auth.Register;
 using IronPrint.Application.Common;
 using IronPrint.Domain.Common;
+using IronPrint.Domain.Ports;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 
 namespace IronPrint.Infrastructure.Identity;
 
-public sealed class RegisterHandler : IRequestHandler<RegisterCommand, Result<string>>
+public sealed class RegisterHandler : IRequestHandler<RegisterCommand, Result<AuthTokens>>
 {
     private readonly UserManager<IdentityUser> _userManager;
     private readonly IJwtTokenService _jwt;
+    private readonly IRefreshTokenService _refreshTokenService;
+    private readonly IRefreshTokenRepository _refreshTokenRepo;
 
-    public RegisterHandler(UserManager<IdentityUser> userManager, IJwtTokenService jwt)
+    public RegisterHandler(
+        UserManager<IdentityUser> userManager,
+        IJwtTokenService jwt,
+        IRefreshTokenService refreshTokenService,
+        IRefreshTokenRepository refreshTokenRepo)
     {
         _userManager = userManager;
         _jwt = jwt;
+        _refreshTokenService = refreshTokenService;
+        _refreshTokenRepo = refreshTokenRepo;
     }
 
-    public async Task<Result<string>> Handle(RegisterCommand cmd, CancellationToken ct)
+    public async Task<Result<AuthTokens>> Handle(RegisterCommand cmd, CancellationToken ct)
     {
         var existing = await _userManager.FindByEmailAsync(cmd.Email);
-        if (existing is not null) return Result.Failure<string>(Error.Conflict("User"));
+        if (existing is not null) return Result.Failure<AuthTokens>(Error.Conflict("User"));
 
         var user = new IdentityUser
         {
@@ -34,9 +43,15 @@ public sealed class RegisterHandler : IRequestHandler<RegisterCommand, Result<st
         if (!identityResult.Succeeded)
         {
             var first = identityResult.Errors.First();
-            return Result.Failure<string>(Error.Validation(first.Code, first.Description));
+            return Result.Failure<AuthTokens>(Error.Validation(first.Code, first.Description));
         }
 
-        return Result.Success(_jwt.GenerateToken(user.Id, user.Email!));
+        var accessToken = _jwt.GenerateAccessToken(user.Id, user.Email!);
+
+        var rawRefreshToken = _refreshTokenService.GenerateToken();
+        var tokenHash = _refreshTokenService.HashToken(rawRefreshToken);
+        await _refreshTokenRepo.AddAsync(user.Id, tokenHash, DateTime.UtcNow.AddDays(30), ct);
+
+        return Result.Success(new AuthTokens(accessToken, rawRefreshToken));
     }
 }

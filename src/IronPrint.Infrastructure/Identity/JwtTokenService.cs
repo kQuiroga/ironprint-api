@@ -21,7 +21,7 @@ public sealed class JwtTokenService : IJwtTokenService
             Encoding.UTF8.GetBytes(config["Jwt:SecretKey"]!));
     }
 
-    public string GenerateToken(string userId, string email)
+    public string GenerateAccessToken(string userId, string email)
     {
         var claims = new[]
         {
@@ -33,7 +33,7 @@ public sealed class JwtTokenService : IJwtTokenService
             issuer: _issuer,
             audience: _audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddDays(7),
+            expires: DateTime.UtcNow.AddMinutes(15),
             signingCredentials: new SigningCredentials(_signingKey, SecurityAlgorithms.HmacSha256));
 
         return new JwtSecurityTokenHandler().WriteToken(token);

@@ -2,5 +2,5 @@ namespace IronPrint.Application.Common;
 
 public interface IJwtTokenService
 {
-    string GenerateToken(string userId, string email);
+    string GenerateAccessToken(string userId, string email);
 }

@@ -24,8 +24,11 @@ public static class InfrastructureExtensions
         services.AddIdentityCore<IdentityUser>()
             .AddUserStore<DapperUserStore>();
 
-        // JWT
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+
+        // JWT y tokens de autenticación
         services.AddScoped<IJwtTokenService, JwtTokenService>();
+        services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 
         // Handlers de auth (viven en Infrastructure por depender de Identity)
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(InfrastructureExtensions).Assembly));
