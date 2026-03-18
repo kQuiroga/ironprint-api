@@ -2,6 +2,7 @@ using IronPrint.Api.Extensions;
 using IronPrint.Application.Commands.Auth.Login;
 using IronPrint.Application.Commands.Auth.Refresh;
 using IronPrint.Application.Commands.Auth.Register;
+using IronPrint.Application.Commands.Auth.Revoke;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,6 +20,7 @@ public static class AuthEndpoints
         group.MapPost("/register", Register).WithName("Register").RequireRateLimiting("auth-register");
         group.MapPost("/login", Login).WithName("Login").RequireRateLimiting("auth-login");
         group.MapPost("/refresh", Refresh).WithName("RefreshToken");
+        group.MapPost("/revoke", Revoke).WithName("RevokeToken");
     }
 
     /// <summary>
@@ -55,6 +57,15 @@ public static class AuthEndpoints
         return result.IsSuccess
             ? Results.Ok(new { accessToken = result.Value.AccessToken, refreshToken = result.Value.RefreshToken })
             : result.ToHttpResult();
+    }
+
+    /// <summary>
+    /// Revoca un refresh token (logout). Idempotente — no falla si el token ya fue revocado.
+    /// </summary>
+    private static async Task<IResult> Revoke([FromBody] RefreshRequest req, ISender sender)
+    {
+        var result = await sender.Send(new RevokeTokenCommand(req.RefreshToken));
+        return result.ToHttpResult();
     }
 
     private record AuthRequest(string Email, string Password);
