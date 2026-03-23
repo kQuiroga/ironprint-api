@@ -23,10 +23,12 @@ public sealed class JwtTokenService : IJwtTokenService
 
     public string GenerateAccessToken(string userId, string email)
     {
+        // Usar nombres de claim estándar OpenID Connect en lugar de URIs de ClaimTypes.*
         var claims = new[]
         {
-            new Claim(ClaimTypes.NameIdentifier, userId),
-            new Claim(ClaimTypes.Email, email)
+            new Claim(JwtRegisteredClaimNames.Sub, userId),
+            new Claim(JwtRegisteredClaimNames.Email, email),
+            new Claim(JwtRegisteredClaimNames.Name, email.Split('@')[0])
         };
 
         var token = new JwtSecurityToken(

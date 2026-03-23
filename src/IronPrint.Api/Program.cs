@@ -44,6 +44,9 @@ builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        // Desactivar el mapeo automático de claim names estándar a URIs de ClaimTypes.*
+        // Permite leer claims por su nombre OpenID Connect: "sub", "email", "name"
+        options.MapInboundClaims = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,               // Verifica que el token fue emitido por esta API
