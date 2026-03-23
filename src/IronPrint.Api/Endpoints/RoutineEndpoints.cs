@@ -48,13 +48,20 @@ public static class RoutineEndpoints
     }
 
     /// <summary>
-    /// Crea una nueva rutina con nombre y duración en semanas.
+    /// Crea una nueva rutina con nombre, duración en semanas y días opcionales con ejercicios.
     /// Devuelve 201 Created con la URL de la rutina creada.
     /// </summary>
     private static async Task<IResult> Create(
         [FromBody] CreateRoutineRequest req, ISender sender, ClaimsPrincipal user)
     {
-        var result = await sender.Send(new CreateRoutineCommand(user.GetUserId(), req.Name, req.WeeksDuration));
+        var cmd = new CreateRoutineCommand(
+            user.GetUserId(), req.Name, req.WeeksDuration,
+            req.Days?.Select(d => new CreateRoutineDayDto(
+                d.DayOfWeek,
+                d.Exercises.Select(e => new CreateRoutineExerciseDto(e.ExerciseId, e.Order, e.TargetSets, e.TargetReps))
+            ))
+        );
+        var result = await sender.Send(cmd);
         return result.ToCreatedResult("GetRoutineById", new { id = result.IsSuccess ? result.Value : Guid.Empty });
     }
 
@@ -79,6 +86,8 @@ public static class RoutineEndpoints
         return result.ToHttpResult();
     }
 
-    private record CreateRoutineRequest(string Name, int WeeksDuration);
+    private record CreateRoutineExerciseRequest(Guid ExerciseId, int Order, int TargetSets, int TargetReps);
+    private record CreateRoutineDayRequest(DayOfWeek DayOfWeek, IEnumerable<CreateRoutineExerciseRequest> Exercises);
+    private record CreateRoutineRequest(string Name, int WeeksDuration, IEnumerable<CreateRoutineDayRequest>? Days = null);
     private record UpdateRoutineRequest(string Name, int WeeksDuration);
 }

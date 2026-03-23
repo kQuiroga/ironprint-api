@@ -8,8 +8,8 @@ public record WorkoutSessionDetailDto(
     Guid Id,
     DateOnly Date,
     Guid? RoutineDayId,
-    IEnumerable<ExerciseLogDto> ExerciseLogs);
+    IEnumerable<ExerciseLogDto> Exercises);
 
 public record ExerciseLogDto(Guid Id, Guid ExerciseId, int Order, IEnumerable<SetLogDto> Sets);
 
-public record SetLogDto(Guid Id, int SetNumber, decimal WeightValue, WeightUnit WeightUnit, int Reps, bool Completed);
+public record SetLogDto(Guid Id, int SetNumber, decimal WeightValue, int Reps, bool Completed);

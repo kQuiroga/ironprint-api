@@ -30,5 +30,5 @@ public sealed class DateOnlyTypeHandler : SqlMapper.TypeHandler<DateOnly>
         => parameter.Value = value.ToDateTime(TimeOnly.MinValue);
 
     public override DateOnly Parse(object value)
-        => DateOnly.FromDateTime((DateTime)value);
+        => value is DateOnly d ? d : DateOnly.FromDateTime((DateTime)value);
 }

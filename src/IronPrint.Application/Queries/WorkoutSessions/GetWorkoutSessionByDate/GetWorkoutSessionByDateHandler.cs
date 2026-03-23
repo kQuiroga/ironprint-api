@@ -19,7 +19,7 @@ public sealed class GetWorkoutSessionByDateHandler : IRequestHandler<GetWorkoutS
             session.Id, session.Date, session.RoutineDayId,
             session.ExerciseLogs.Select(l => new ExerciseLogDto(
                 l.Id, l.ExerciseId, l.Order,
-                l.Sets.Select(s => new SetLogDto(s.Id, s.SetNumber, s.Weight.Value, s.Weight.Unit, s.Reps, s.Completed)))));
+                l.Sets.Select(s => new SetLogDto(s.Id, s.SetNumber, s.Weight.Value, s.Reps, s.Completed)))));
 
         return Result.Success(dto);
     }
