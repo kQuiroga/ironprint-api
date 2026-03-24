@@ -11,6 +11,7 @@ public static class DapperConfig
         DefaultTypeMap.MatchNamesWithUnderscores = true;
 
         SqlMapper.AddTypeHandler(new DateOnlyTypeHandler());
+        SqlMapper.AddTypeHandler(new IntArrayTypeHandler());
 
         // Mapeo explícito para IdentityUser (snake_case → PascalCase)
         SqlMapper.SetTypeMap(typeof(IdentityUser), new CustomPropertyTypeMap(
@@ -22,6 +23,15 @@ public static class DapperConfig
                     .FirstOrDefault(p => p.Name.Equals(normalized, StringComparison.OrdinalIgnoreCase))!;
             }));
     }
+}
+
+public sealed class IntArrayTypeHandler : SqlMapper.TypeHandler<int[]>
+{
+    public override void SetValue(IDbDataParameter parameter, int[]? value)
+        => parameter.Value = (object?)value ?? DBNull.Value;
+
+    public override int[] Parse(object value)
+        => value is int[] arr ? arr : ((System.Array)value).Cast<int>().ToArray();
 }
 
 public sealed class DateOnlyTypeHandler : SqlMapper.TypeHandler<DateOnly>
