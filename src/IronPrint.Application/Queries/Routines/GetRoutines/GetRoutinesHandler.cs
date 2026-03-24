@@ -18,7 +18,7 @@ public sealed class GetRoutinesHandler : IRequestHandler<GetRoutinesQuery, Resul
     }
 
     private static RoutineDto ToDto(Routine r) => new(
-        r.Id, r.Name, r.WeeksDuration, r.CreatedAt,
-        r.Days.Select(d => new RoutineDayDto(d.Id, d.DayOfWeek,
+        r.Id, r.Name, r.WeeksDuration, r.IsActive, r.CreatedAt,
+        r.Days.Select(d => new RoutineDayDto(d.Id, d.DayOfWeek, d.Name, d.MuscleGroups,
             d.Exercises.Select(e => new RoutineExerciseDto(e.Id, e.ExerciseId, e.Order, e.TargetSets, e.TargetReps)))));
 }

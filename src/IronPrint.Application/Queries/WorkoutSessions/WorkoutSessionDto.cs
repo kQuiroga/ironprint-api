@@ -2,7 +2,7 @@ using IronPrint.Domain.ValueObjects;
 
 namespace IronPrint.Application.Queries.WorkoutSessions;
 
-public record WorkoutCalendarEntryDto(DateOnly Date, bool HasSession, Guid? SessionId);
+public record WorkoutCalendarEntryDto(DateOnly Date, bool HasSession, Guid? SessionId, DayLogStatus? DayLogStatus, bool IsPlanned);
 
 public record WorkoutSessionDetailDto(
     Guid Id,

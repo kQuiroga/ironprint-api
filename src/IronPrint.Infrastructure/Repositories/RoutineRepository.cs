@@ -1,6 +1,7 @@
 using Dapper;
 using IronPrint.Domain.Entities;
 using IronPrint.Domain.Ports;
+using IronPrint.Domain.ValueObjects;
 using IronPrint.Infrastructure.Persistence;
 
 namespace IronPrint.Infrastructure.Repositories;
@@ -18,6 +19,17 @@ public sealed class RoutineRepository : IRoutineRepository
         var rows = await conn.QueryAsync<FlatRoutineRow>(
             RoutineJoinSql + " WHERE r.id = @id AND r.user_id = @userId",
             new { id, userId });
+
+        return BuildRoutines(rows).FirstOrDefault();
+    }
+
+    public async Task<Routine?> GetActiveByUserIdAsync(string userId, CancellationToken ct = default)
+    {
+        using var conn = await _db.CreateAsync(ct);
+
+        var rows = await conn.QueryAsync<FlatRoutineRow>(
+            RoutineJoinSql + " WHERE r.user_id = @userId AND r.is_active = TRUE",
+            new { userId });
 
         return BuildRoutines(rows).FirstOrDefault();
     }
@@ -48,9 +60,11 @@ public sealed class RoutineRepository : IRoutineRepository
 
         foreach (var day in routine.Days)
         {
+            var muscleGroups = day.MuscleGroups.Select(m => (int)m).ToArray();
+
             await conn.ExecuteAsync(
-                "INSERT INTO routine_days (id, routine_id, day_of_week) VALUES (@Id, @RoutineId, @DayOfWeek)",
-                new { day.Id, day.RoutineId, DayOfWeek = (int)day.DayOfWeek },
+                "INSERT INTO routine_days (id, routine_id, day_of_week, name, muscle_groups) VALUES (@Id, @RoutineId, @DayOfWeek, @Name, @MuscleGroups)",
+                new { day.Id, day.RoutineId, DayOfWeek = (int)day.DayOfWeek, Name = (object?)day.Name ?? DBNull.Value, MuscleGroups = muscleGroups },
                 tx);
 
             foreach (var ex in day.Exercises)
@@ -74,6 +88,30 @@ public sealed class RoutineRepository : IRoutineRepository
             new { routine.Name, routine.WeeksDuration, routine.Id });
     }
 
+    public async Task ActivateAsync(Guid id, string userId, CancellationToken ct = default)
+    {
+        using var conn = await _db.CreateAsync(ct);
+        using var tx = await conn.BeginTransactionAsync(ct);
+
+        await conn.ExecuteAsync(
+            "UPDATE routines SET is_active = FALSE WHERE user_id = @userId AND is_active = TRUE",
+            new { userId }, tx);
+
+        await conn.ExecuteAsync(
+            "UPDATE routines SET is_active = TRUE WHERE id = @id AND user_id = @userId",
+            new { id, userId }, tx);
+
+        await tx.CommitAsync(ct);
+    }
+
+    public async Task DeactivateAsync(Guid id, string userId, CancellationToken ct = default)
+    {
+        using var conn = await _db.CreateAsync(ct);
+        await conn.ExecuteAsync(
+            "UPDATE routines SET is_active = FALSE WHERE id = @id AND user_id = @userId",
+            new { id, userId });
+    }
+
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
         using var conn = await _db.CreateAsync(ct);
@@ -87,10 +125,13 @@ public sealed class RoutineRepository : IRoutineRepository
             r.user_id         AS UserId,
             r.name            AS Name,
             r.weeks_duration  AS WeeksDuration,
+            r.is_active       AS IsActive,
             r.created_at      AS CreatedAt,
             rd.id             AS DayId,
             rd.routine_id     AS DayRoutineId,
             rd.day_of_week    AS DayOfWeek,
+            rd.name           AS DayName,
+            rd.muscle_groups  AS DayMuscleGroups,
             re.id             AS ExId,
             re.routine_day_id AS ExRoutineDayId,
             re.exercise_id    AS ExerciseId,
@@ -136,19 +177,22 @@ public sealed class RoutineRepository : IRoutineRepository
             var days = routineDays[routineId].Select(kv =>
             {
                 var d = kv.Value;
+                var muscleGroups = d.DayMuscleGroups is null
+                    ? []
+                    : d.DayMuscleGroups.Select(m => (MuscleGroup)m);
                 var exercises = dayExercises.TryGetValue(kv.Key, out var exRows)
                     ? exRows.Select(e => RoutineExercise.Reconstitute(
                         e.ExId!.Value, e.ExRoutineDayId!.Value, e.ExerciseId!.Value,
                         e.ExOrder!.Value, e.TargetSets!.Value, e.TargetReps!.Value))
                     : [];
-                return RoutineDay.Reconstitute(d.DayId!.Value, d.DayRoutineId!.Value, (DayOfWeek)d.DayOfWeek!.Value, exercises);
+                return RoutineDay.Reconstitute(d.DayId!.Value, d.DayRoutineId!.Value, (DayOfWeek)d.DayOfWeek!.Value, d.DayName, muscleGroups, exercises);
             });
-            return Routine.Reconstitute(r.RoutineId, r.UserId, r.Name, r.WeeksDuration, r.CreatedAt, days);
+            return Routine.Reconstitute(r.RoutineId, r.UserId, r.Name, r.WeeksDuration, r.IsActive, r.CreatedAt, days);
         });
     }
 
     private sealed record FlatRoutineRow(
-        Guid RoutineId, string UserId, string Name, int WeeksDuration, DateTime CreatedAt,
-        Guid? DayId, Guid? DayRoutineId, int? DayOfWeek,
+        Guid RoutineId, string UserId, string Name, int WeeksDuration, bool IsActive, DateTime CreatedAt,
+        Guid? DayId, Guid? DayRoutineId, int? DayOfWeek, string? DayName, int[]? DayMuscleGroups,
         Guid? ExId, Guid? ExRoutineDayId, Guid? ExerciseId, int? ExOrder, int? TargetSets, int? TargetReps);
 }

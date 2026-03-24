@@ -1,9 +1,13 @@
 using IronPrint.Api.Extensions;
+using IronPrint.Application.Commands.Routines.ActivateRoutine;
+using IronPrint.Application.Commands.Routines.DeactivateRoutine;
 using IronPrint.Application.Commands.Routines.CreateRoutine;
 using IronPrint.Application.Commands.Routines.DeleteRoutine;
 using IronPrint.Application.Commands.Routines.UpdateRoutine;
+using IronPrint.Application.Queries.Routines.GetActiveRoutine;
 using IronPrint.Application.Queries.Routines.GetRoutineById;
 using IronPrint.Application.Queries.Routines.GetRoutines;
+using IronPrint.Domain.ValueObjects;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -22,10 +26,41 @@ public static class RoutineEndpoints
         var group = app.MapGroup("/routines").RequireAuthorization();
 
         group.MapGet("/", GetAll).WithName("GetRoutines");
+        group.MapGet("/active", GetActive).WithName("GetActiveRoutine");
         group.MapGet("/{id:guid}", GetById).WithName("GetRoutineById");
         group.MapPost("/", Create).WithName("CreateRoutine");
+        group.MapPost("/{id:guid}/activate", Activate).WithName("ActivateRoutine");
+        group.MapPost("/{id:guid}/deactivate", Deactivate).WithName("DeactivateRoutine");
         group.MapPut("/{id:guid}", Update).WithName("UpdateRoutine");
         group.MapDelete("/{id:guid}", Delete).WithName("DeleteRoutine");
+    }
+
+    /// <summary>
+    /// Devuelve la rutina activa del usuario, o 204 No Content si no hay ninguna.
+    /// </summary>
+    private static async Task<IResult> GetActive(ISender sender, ClaimsPrincipal user)
+    {
+        var result = await sender.Send(new GetActiveRoutineQuery(user.GetUserId()));
+        if (!result.IsSuccess) return Results.Problem();
+        return result.Value is null ? Results.NoContent() : Results.Ok(result.Value);
+    }
+
+    /// <summary>
+    /// Activa una rutina y desactiva la anterior si existía.
+    /// </summary>
+    private static async Task<IResult> Activate(Guid id, ISender sender, ClaimsPrincipal user)
+    {
+        var result = await sender.Send(new ActivateRoutineCommand(id, user.GetUserId()));
+        return result.ToHttpResult();
+    }
+
+    /// <summary>
+    /// Desactiva una rutina sin activar ninguna otra.
+    /// </summary>
+    private static async Task<IResult> Deactivate(Guid id, ISender sender, ClaimsPrincipal user)
+    {
+        var result = await sender.Send(new DeactivateRoutineCommand(id, user.GetUserId()));
+        return result.ToHttpResult();
     }
 
     /// <summary>
@@ -57,7 +92,7 @@ public static class RoutineEndpoints
         var cmd = new CreateRoutineCommand(
             user.GetUserId(), req.Name, req.WeeksDuration,
             req.Days?.Select(d => new CreateRoutineDayDto(
-                d.DayOfWeek,
+                d.DayOfWeek, d.Name, d.MuscleGroups ?? [],
                 d.Exercises.Select(e => new CreateRoutineExerciseDto(e.ExerciseId, e.Order, e.TargetSets, e.TargetReps))
             ))
         );
@@ -87,7 +122,7 @@ public static class RoutineEndpoints
     }
 
     private record CreateRoutineExerciseRequest(Guid ExerciseId, int Order, int TargetSets, int TargetReps);
-    private record CreateRoutineDayRequest(DayOfWeek DayOfWeek, IEnumerable<CreateRoutineExerciseRequest> Exercises);
+    private record CreateRoutineDayRequest(DayOfWeek DayOfWeek, string? Name, IEnumerable<MuscleGroup>? MuscleGroups, IEnumerable<CreateRoutineExerciseRequest> Exercises);
     private record CreateRoutineRequest(string Name, int WeeksDuration, IEnumerable<CreateRoutineDayRequest>? Days = null);
     private record UpdateRoutineRequest(string Name, int WeeksDuration);
 }

@@ -6,6 +6,7 @@ public class Routine
     public string UserId { get; private set; } = string.Empty;
     public string Name { get; private set; } = string.Empty;
     public int WeeksDuration { get; private set; }
+    public bool IsActive { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
     private readonly List<RoutineDay> _days = [];
@@ -25,6 +26,8 @@ public class Routine
         };
     }
 
+    public void Activate() => IsActive = true;
+
     public void Update(string name, int weeksDuration)
     {
         Name = name;
@@ -33,7 +36,7 @@ public class Routine
 
     public void AddDay(RoutineDay day) => _days.Add(day);
 
-    public static Routine Reconstitute(Guid id, string userId, string name, int weeksDuration, DateTime createdAt, IEnumerable<RoutineDay>? days = null)
+    public static Routine Reconstitute(Guid id, string userId, string name, int weeksDuration, bool isActive, DateTime createdAt, IEnumerable<RoutineDay>? days = null)
     {
         var routine = new Routine
         {
@@ -41,6 +44,7 @@ public class Routine
             UserId = userId,
             Name = name,
             WeeksDuration = weeksDuration,
+            IsActive = isActive,
             CreatedAt = createdAt
         };
         if (days is not null)
