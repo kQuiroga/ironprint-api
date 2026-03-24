@@ -19,7 +19,7 @@ public sealed class CreateRoutineHandler : IRequestHandler<CreateRoutineCommand,
         {
             foreach (var dayDto in cmd.Days)
             {
-                var day = RoutineDay.Create(routine.Id, dayDto.DayOfWeek);
+                var day = RoutineDay.Create(routine.Id, dayDto.DayOfWeek, dayDto.Name, dayDto.MuscleGroups);
                 foreach (var exDto in dayDto.Exercises)
                 {
                     var exercise = RoutineExercise.Create(day.Id, exDto.ExerciseId, exDto.Order, exDto.TargetSets, exDto.TargetReps);

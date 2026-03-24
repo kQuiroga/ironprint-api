@@ -114,6 +114,7 @@ app.MapAuthEndpoints();
 app.MapExerciseEndpoints();
 app.MapRoutineEndpoints();
 app.MapWorkoutSessionEndpoints();
+app.MapDayLogEndpoints();
 
 app.MapHealthChecks("/health", new HealthCheckOptions
 {

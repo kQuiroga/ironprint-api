@@ -20,6 +20,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IExerciseRepository, ExerciseRepository>();
         services.AddScoped<IRoutineRepository, RoutineRepository>();
         services.AddScoped<IWorkoutSessionRepository, WorkoutSessionRepository>();
+        services.AddScoped<IDayLogRepository, DayLogRepository>();
 
         // Identity con Dapper
         services.AddIdentityCore<IdentityUser>()
