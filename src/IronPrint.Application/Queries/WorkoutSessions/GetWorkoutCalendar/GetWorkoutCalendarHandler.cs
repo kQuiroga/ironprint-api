@@ -1,17 +1,16 @@
 using IronPrint.Domain.Common;
 using IronPrint.Domain.Ports;
-using IronPrint.Domain.ValueObjects;
 using MediatR;
 
 namespace IronPrint.Application.Queries.WorkoutSessions.GetWorkoutCalendar;
 
-public sealed class GetWorkoutCalendarHandler : IRequestHandler<GetWorkoutCalendarQuery, Result<IEnumerable<WorkoutCalendarEntryDto>>>
+public sealed class GetWorkoutCalendarQueryHandler : IRequestHandler<GetWorkoutCalendarQuery, Result<IEnumerable<WorkoutCalendarEntryDto>>>
 {
     private readonly IWorkoutSessionRepository _sessionRepo;
     private readonly IDayLogRepository _dayLogRepo;
     private readonly IRoutineRepository _routineRepo;
 
-    public GetWorkoutCalendarHandler(IWorkoutSessionRepository sessionRepo, IDayLogRepository dayLogRepo, IRoutineRepository routineRepo)
+    public GetWorkoutCalendarQueryHandler(IWorkoutSessionRepository sessionRepo, IDayLogRepository dayLogRepo, IRoutineRepository routineRepo)
     {
         _sessionRepo = sessionRepo;
         _dayLogRepo = dayLogRepo;
@@ -28,7 +27,7 @@ public sealed class GetWorkoutCalendarHandler : IRequestHandler<GetWorkoutCalend
 
         var sessionsByDate = sessionsTask.Result.ToDictionary(s => s.Date, s => s.Id);
         var dayLogsByDate = dayLogsTask.Result.ToDictionary(d => d.Date, d => d.Status);
-        var plannedDays = activeRoutineTask.Result?.Days.Select(d => d.DayOfWeek).ToHashSet() ?? [];
+        var routineDayMap = activeRoutineTask.Result?.Days.ToDictionary(d => d.DayOfWeek, d => d.Id) ?? [];
 
         var entries = Enumerable
             .Range(0, query.To.DayNumber - query.From.DayNumber + 1)
@@ -37,13 +36,15 @@ public sealed class GetWorkoutCalendarHandler : IRequestHandler<GetWorkoutCalend
                 var date = query.From.AddDays(offset);
                 var hasSession = sessionsByDate.TryGetValue(date, out var sessionId);
                 var hasDayLog = dayLogsByDate.TryGetValue(date, out var dayLogStatus);
-                var isPlanned = plannedDays.Contains((DayOfWeek)date.DayOfWeek);
+                routineDayMap.TryGetValue((DayOfWeek)date.DayOfWeek, out var routineDayId);
+                var isPlanned = routineDayId != default;
                 return new WorkoutCalendarEntryDto(
                     date,
                     hasSession,
                     hasSession ? sessionId : null,
                     hasDayLog ? dayLogStatus : null,
-                    isPlanned);
+                    isPlanned,
+                    isPlanned ? routineDayId : null);
             });
 
         return Result.Success(entries);
