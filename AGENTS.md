@@ -24,7 +24,7 @@
 - Migrations managed by DbUp — SQL scripts only, never run DDL from code
 
 ## Security
-- All endpoints except /auth/* must require authentication
+- All endpoints except /auth/* and /health must require authentication (/health is public for Azure Container Apps health probes)
 - Never log passwords, tokens, or sensitive user data
 - Rate limit auth endpoints
 

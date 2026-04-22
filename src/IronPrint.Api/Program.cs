@@ -10,7 +10,6 @@ using IronPrint.Infrastructure.Migrations;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 
@@ -31,7 +30,10 @@ var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get
 // Registro de servicios
 builder.Services.AddOpenApi();
 builder.Services.ConfigureHttpJsonOptions(options =>
-    options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
+{
+    options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+});
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(connectionString);
 builder.Services.AddCors(options =>
@@ -131,8 +133,8 @@ app.MapHealthChecks("/health", new HealthCheckOptions
                 description = e.Value.Description
             })
         });
-        await ctx.Response.WriteAsync(result);
+        await ctx.Response.WriteAsync(result, ctx.RequestAborted);
     }
-});
+}).AllowAnonymous(); // Público por requerimiento de Azure Container Apps health probes
 
 app.Run();
