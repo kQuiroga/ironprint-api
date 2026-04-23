@@ -17,7 +17,7 @@
     ]
   },
   "Jwt": {
-    "SecretKey": "ironprint-dev-secret-key-min-32-chars!!"
+    "SecretKey": "your-dev-secret-key-min-32-chars"
   },
   "Cors": {
     "AllowedOrigins": [ "http://localhost:3000" ]
