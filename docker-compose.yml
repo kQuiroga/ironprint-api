@@ -30,6 +30,7 @@ services:
       Jwt__SecretKey: "${JWT_SECRET_KEY}"
       Jwt__Issuer: "ironprint-api"
       Jwt__Audience: "ironprint-web"
+      Cors__AllowedOrigins__0: "http://localhost:3000"
     depends_on:
       postgres:
         condition: service_healthy

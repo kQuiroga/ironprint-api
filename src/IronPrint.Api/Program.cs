@@ -104,9 +104,9 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference(); // UI en /scalar/v1
 }
 
+app.UseCors();
 app.UseHttpsRedirection();
 app.UseSerilogRequestLogging();
-app.UseCors();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
