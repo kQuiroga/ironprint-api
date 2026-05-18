@@ -6,6 +6,9 @@
 # dotenv files
 .env
 
+# Claude Code / Gentle AI tooling cache
+.atl/*.cache.json
+
 # Local development settings (contain secrets — never commit)
 appsettings.Development.json
 
