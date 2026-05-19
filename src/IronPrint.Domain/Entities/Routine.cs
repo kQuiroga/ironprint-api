@@ -36,6 +36,8 @@ public class Routine
 
     public void AddDay(RoutineDay day) => _days.Add(day);
 
+    public void ClearDays() => _days.Clear();
+
     public static Routine Reconstitute(Guid id, string userId, string name, int weeksDuration, bool isActive, DateTime createdAt, IEnumerable<RoutineDay>? days = null)
     {
         var routine = new Routine

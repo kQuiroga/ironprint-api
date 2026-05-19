@@ -88,6 +88,52 @@ public sealed class RoutineRepository : IRoutineRepository
             new { routine.Name, routine.WeeksDuration, routine.Id });
     }
 
+    /// <summary>
+    /// Updates routine metadata and fully replaces all days and exercises atomically.
+    /// Deletes existing routine_days rows (ON DELETE CASCADE removes routine_exercises automatically —
+    /// confirmed in migration 003_create_routines.sql: routine_exercises.routine_day_id REFERENCES routine_days(id) ON DELETE CASCADE).
+    /// WARNING: routine_day_id references in workout_sessions will be set to NULL (ON DELETE SET NULL)
+    /// once session logging ships. This is acceptable while workout session logging is unimplemented —
+    /// revisit before shipping sessions.
+    /// </summary>
+    public async Task UpdateWithDaysAsync(Routine routine, CancellationToken ct = default)
+    {
+        using var conn = await _db.CreateAsync(ct);
+        using var tx = await conn.BeginTransactionAsync(ct);
+
+        await conn.ExecuteAsync(
+            "UPDATE routines SET name = @Name, weeks_duration = @WeeksDuration WHERE id = @Id",
+            new { routine.Name, routine.WeeksDuration, routine.Id },
+            tx);
+
+        // CASCADE: deleting routine_days rows automatically removes routine_exercises rows
+        await conn.ExecuteAsync(
+            "DELETE FROM routine_days WHERE routine_id = @Id",
+            new { routine.Id },
+            tx);
+
+        foreach (var day in routine.Days)
+        {
+            var muscleGroups = day.MuscleGroups.Select(m => (int)m).ToArray();
+
+            await conn.ExecuteAsync(
+                "INSERT INTO routine_days (id, routine_id, day_of_week, name, muscle_groups) VALUES (@Id, @RoutineId, @DayOfWeek, @Name, @MuscleGroups)",
+                new { day.Id, day.RoutineId, DayOfWeek = (int)day.DayOfWeek, Name = (object?)day.Name ?? DBNull.Value, MuscleGroups = muscleGroups },
+                tx);
+
+            foreach (var ex in day.Exercises)
+                await conn.ExecuteAsync(
+                    """
+                    INSERT INTO routine_exercises (id, routine_day_id, exercise_id, "order", target_sets, target_reps)
+                    VALUES (@Id, @RoutineDayId, @ExerciseId, @Order, @TargetSets, @TargetReps)
+                    """,
+                    new { ex.Id, ex.RoutineDayId, ex.ExerciseId, ex.Order, ex.TargetSets, ex.TargetReps },
+                    tx);
+        }
+
+        await tx.CommitAsync(ct);
+    }
+
     public async Task ActivateAsync(Guid id, string userId, CancellationToken ct = default)
     {
         using var conn = await _db.CreateAsync(ct);

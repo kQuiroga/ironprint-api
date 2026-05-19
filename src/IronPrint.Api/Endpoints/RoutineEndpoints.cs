@@ -102,12 +102,20 @@ public static class RoutineEndpoints
 
     /// <summary>
     /// Actualiza el nombre y duración de una rutina existente.
+    /// Si se incluye el campo 'days', reemplaza completamente los días y ejercicios de la rutina.
     /// Falla con 404 si la rutina no pertenece al usuario.
     /// </summary>
     private static async Task<IResult> Update(
         Guid id, [FromBody] UpdateRoutineRequest req, ISender sender, ClaimsPrincipal user)
     {
-        var result = await sender.Send(new UpdateRoutineCommand(id, user.GetUserId(), req.Name, req.WeeksDuration));
+        var cmd = new UpdateRoutineCommand(
+            id, user.GetUserId(), req.Name, req.WeeksDuration,
+            req.Days?.Select(d => new UpdateRoutineDayDto(
+                d.DayOfWeek, d.Name, d.MuscleGroups ?? [],
+                d.Exercises.Select(e => new UpdateRoutineExerciseDto(e.ExerciseId, e.Order, e.TargetSets, e.TargetReps))
+            ))
+        );
+        var result = await sender.Send(cmd);
         return result.ToHttpResult();
     }
 
@@ -124,5 +132,7 @@ public static class RoutineEndpoints
     private record CreateRoutineExerciseRequest(Guid ExerciseId, int Order, int TargetSets, int TargetReps);
     private record CreateRoutineDayRequest(DayOfWeek DayOfWeek, string? Name, IEnumerable<MuscleGroup>? MuscleGroups, IEnumerable<CreateRoutineExerciseRequest> Exercises);
     private record CreateRoutineRequest(string Name, int WeeksDuration, IEnumerable<CreateRoutineDayRequest>? Days = null);
-    private record UpdateRoutineRequest(string Name, int WeeksDuration);
+    private record UpdateRoutineExerciseRequest(Guid ExerciseId, int Order, int TargetSets, int TargetReps);
+    private record UpdateRoutineDayRequest(DayOfWeek DayOfWeek, string? Name, IEnumerable<MuscleGroup>? MuscleGroups, IEnumerable<UpdateRoutineExerciseRequest> Exercises);
+    private record UpdateRoutineRequest(string Name, int WeeksDuration, IEnumerable<UpdateRoutineDayRequest>? Days = null);
 }
