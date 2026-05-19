@@ -10,9 +10,10 @@ public sealed class UpdateRoutineValidator : AbstractValidator<UpdateRoutineComm
         RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
         RuleFor(x => x.WeeksDuration).GreaterThan(0).LessThanOrEqualTo(52);
 
-        RuleForEach(x => x.Days)
-            .When(x => x.Days != null)
-            .SetValidator(new UpdateRoutineDayDtoValidator());
+        When(x => x.Days != null, () =>
+        {
+            RuleForEach(x => x.Days).SetValidator(new UpdateRoutineDayDtoValidator());
+        });
     }
 }
 
